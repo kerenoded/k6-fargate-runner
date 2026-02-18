@@ -404,9 +404,25 @@ def main():
                 exit_code = containers[0].get("exitCode")
                 reason = containers[0].get("reason")
 
-            print(f"✅ STOPPED | elapsed={elapsed}s | est~100% | exitCode={exit_code} reason={reason}")
+            stop_code = task.get("stopCode", "")
+            stopped_reason = task.get("stoppedReason", "")
 
-            if exit_code not in (0, None):
+            print(f"🛑 STOPPED | elapsed={elapsed}s | exitCode={exit_code} reason={reason}")
+
+            # exitCode=None means ECS couldn't capture the exit code — the task was
+            # killed by the platform (OOM, spot interruption, task timeout, etc.)
+            # rather than exiting normally. Treat this as a failure so we don't
+            # silently skip result upload and mislead the caller.
+            if exit_code is None:
+                raise SystemExit(
+                    f"ECS task stopped without a container exit code.\n"
+                    f"  stopCode:      {stop_code or '(none)'}\n"
+                    f"  stoppedReason: {stopped_reason or '(none)'}\n"
+                    f"This usually means the task was OOM-killed, timed out, or interrupted by the platform.\n"
+                    f"Check CloudWatch logs: {log_stream_name or 'see log group above'}"
+                )
+
+            if exit_code != 0:
                 raise SystemExit(f"ECS task failed (exitCode={exit_code}). Check CloudWatch logs for details.")
 
             if args.fetch_and_append:
