@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -9,19 +10,30 @@ if __package__ is None and __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+_DEFAULT_REGION = os.environ.get("AWS_DEFAULT_REGION") or os.environ.get("AWS_REGION") or "eu-west-1"
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("run_id")
     ap.add_argument("--ledger", default="test-results/runs.jsonl")
+    ap.add_argument(
+        "--region",
+        default=_DEFAULT_REGION,
+        help="AWS region of the results S3 bucket (default: AWS_REGION env var or eu-west-1).",
+    )
     args = ap.parse_args()
 
     fetch_script = REPO_ROOT / "tools" / "fetch_run.py"
     extract_script = REPO_ROOT / "tools" / "extract_run_metrics.py"
 
-    # 1) Fetch
-    subprocess.run([sys.executable, str(fetch_script), args.run_id], check=True)
+    # 1) Fetch — forward --region so boto3 uses the correct S3 endpoint.
+    # Without this, fetch_run.py falls back to its own default (eu-west-1) and
+    # gets a PermanentRedirect for buckets in any other region.
+    subprocess.run(
+        [sys.executable, str(fetch_script), args.run_id, "--region", args.region],
+        check=True,
+    )
 
     # 2) Extract and append
     summary_path = REPO_ROOT / "test-results" / args.run_id / "summary.json"
