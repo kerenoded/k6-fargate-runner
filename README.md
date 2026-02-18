@@ -108,6 +108,8 @@ terraform init
 terraform apply
 ```
 
+> **Remote state (recommended for shared use):** By default Terraform stores state locally in `terraform.tfstate`. If you lose that file you lose the ability to manage or destroy the infrastructure. A ready-to-use S3 + DynamoDB backend template is provided at `infra/terraform/backend.tf.example` — copy it to `backend.tf`, fill in your bucket/table names, and re-run `terraform init` to migrate.
+
 ### 3) Build & push image
 
 ```bash
@@ -259,8 +261,10 @@ cleanup is asynchronous.
 - Target API auth can be passed via env vars if needed (`TARGET_API_KEY` / `TARGET_BEARER_TOKEN`)
 
 Important:
--   ECS task overrides (including env vars) can be visible in AWS APIs and CloudTrail to principals with access.
+-   **ECS task overrides are logged in CloudTrail.** Every `RunTask` call records all container override environment variables — including `TARGET_API_KEY`, `TARGET_BEARER_TOKEN`, and the full `REQUEST_JSON` payload (URL, headers, body) — in CloudTrail and in `ecs:DescribeTasks` responses. Any principal with CloudTrail read access or `ecs:DescribeTasks` can see these values.
+-   **Never put auth credentials in `request.json` headers.** Use `TARGET_API_KEY` / `TARGET_BEARER_TOKEN` env vars exclusively for credentials. Be aware those are also visible in CloudTrail.
 -   Avoid putting secrets inside request JSON files. Never commit secrets.
+-   In shared AWS accounts, restrict CloudTrail read access and `ecs:DescribeTasks` permissions to limit exposure of task environment variables.
 
 ## Cost & Cleanup
 

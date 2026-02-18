@@ -1,5 +1,10 @@
 resource "aws_ecr_repository" "k6" {
-  name         = local.name
+  name = local.name
+
+  # force_delete = true allows `terraform destroy` to delete this repository even
+  # when it still contains images. Without it, destroy fails with a
+  # RepositoryNotEmptyException and you must manually empty ECR first.
+  # Trade-off: this makes accidental destruction easier — be careful in production.
   force_delete = true
 
   tags = merge(local.common_tags, {

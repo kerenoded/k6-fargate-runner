@@ -4,10 +4,15 @@
 
 If you discover a security issue, please do **not** open a public GitHub issue.
 
-Instead, email the maintainer with:
-- A clear description of the issue
-- Steps to reproduce (or a proof-of-concept)
-- Impact assessment (what an attacker can do)
+Instead, use **[GitHub's private vulnerability reporting](https://github.com/kerenoded/k6-fargate-runner/security/advisories/new)**:
+
+1. Go to the link above (or: repository → Security tab → "Report a vulnerability")
+2. Include:
+   - A clear description of the issue
+   - Steps to reproduce (or a proof-of-concept)
+   - Impact assessment (what an attacker can do)
+
+GitHub will notify the maintainer privately and keep the report confidential until a fix is published.
 
 ## Sensitive data
 

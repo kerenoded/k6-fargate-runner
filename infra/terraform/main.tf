@@ -3,8 +3,11 @@ terraform {
 
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.0"
+      source = "hashicorp/aws"
+      # ~> 5.0 allows patch/minor upgrades within 5.x but blocks major version
+      # bumps (6.0+) that may contain breaking changes to resource schemas.
+      # Use >= only if you intentionally want to track future major versions.
+      version = "~> 5.0"
     }
   }
 }

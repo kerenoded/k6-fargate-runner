@@ -1,6 +1,15 @@
 resource "aws_ecs_cluster" "this" {
   name = local.name
 
+  # Container Insights publishes per-task CPU and memory utilisation metrics to
+  # CloudWatch. Without this, you cannot tell whether k6 is CPU-bound or
+  # memory-bound during a run — making it hard to interpret results or anticipate
+  # OOM kills. Note: Container Insights incurs additional CloudWatch costs.
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
+
   tags = merge(local.common_tags, {
     Name = local.name
   })
