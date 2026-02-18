@@ -1,0 +1,8 @@
+{
+  "url": "https://your.api/endpoint",
+  "method": "GET",
+  "headers": {
+    "Accept": "*/*"
+  },
+  "body": null
+}

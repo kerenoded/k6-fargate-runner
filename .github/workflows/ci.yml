@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+          terraform_version: "1.7.5"
+
+      - name: Terraform fmt
+        run: terraform -chdir=infra/terraform fmt -check -recursive
+
+      - name: Terraform init (no backend)
+        run: terraform -chdir=infra/terraform init -input=false -backend=false
+
+      - name: Terraform validate
+        run: terraform -chdir=infra/terraform validate
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r tools/requirements.txt -r tools/requirements-dev.txt
+
+      - name: Python compile
+        run: python -m compileall -q tools uploader loadtest
+
+      - name: Ruff (basic)
+        run: ruff check --select F tools uploader loadtest

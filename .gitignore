@@ -1,0 +1,21 @@
+# Terraform
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfvars
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+test-results/
+
+# Local request configs (keep real targets out of the repo)
+loadtest/utils/*.local.json
+
+.DS_Store
+
+# Local env
+.env
