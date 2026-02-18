@@ -24,7 +24,11 @@ upload_summary() {
 }
 
 # Run k6 (ECS passes: run /tests/scenarios/<scenario>.js)
-# Upload is attempted only when k6 exits successfully.
+# Upload is attempted when k6 exits 0 (success) OR 99 (threshold breach).
+# Exit 99 means k6 completed the run but one or more thresholds were breached —
+# the summary.json is still written and the data is valid. Skipping the upload
+# on exit 99 would lose exactly the results you most want to analyse.
+# Any other non-zero exit (e.g. script error, bad args) skips the upload.
 k6_exit=0
 
 k6 "$@" &
@@ -39,10 +43,13 @@ trap term_handler TERM INT
 
 wait "${k6_pid}" || k6_exit=$?
 
-if [ "${k6_exit}" -eq 0 ]; then
+if [ "${k6_exit}" -eq 0 ] || [ "${k6_exit}" -eq 99 ]; then
+  if [ "${k6_exit}" -eq 99 ]; then
+    echo "k6 exited 99 (threshold breach) — uploading results anyway"
+  fi
   upload_summary
 else
-  echo "Skipping upload because k6 exited non-zero (exitCode=${k6_exit})"
+  echo "Skipping upload because k6 exited with error (exitCode=${k6_exit})"
 fi
 
 exit "${k6_exit}"

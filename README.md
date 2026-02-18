@@ -144,6 +144,16 @@ python3 tools/run_task.py \
   --tail
 ```
 
+**Threshold flags (optional):** k6 defaults to failing (exit 99) if error rate > 1% or p95 latency > 1000ms. Results are uploaded even on a threshold breach. To adjust:
+
+```bash
+# Relax thresholds for a slow or degraded API
+python3 tools/run_task.py ... --threshold-error-rate 0.05 --threshold-p95-ms 2000
+
+# Disable thresholds entirely — always upload results regardless of performance
+python3 tools/run_task.py ... --threshold-error-rate off --threshold-p95-ms off
+```
+
 If you add `--fetch-and-append`, the tool will automatically download the result and append it to the local run history when the task finishes (so you can skip step 3):
 
 ```bash
@@ -193,7 +203,7 @@ It runs:
 3. Container `ENTRYPOINT` executes `entrypoint.sh`
 4. `entrypoint.sh` runs k6
 5. k6 `handleSummary()` writes `/tmp/summary.json`
-6. After k6 exits, `entrypoint.sh` attempts to upload `summary.json` to S3 (only when k6 exits successfully)
+6. After k6 exits, `entrypoint.sh` uploads `summary.json` to S3 when k6 exits 0 (success) or 99 (threshold breach — run completed but thresholds failed). Other non-zero exits (script errors, bad args) skip the upload.
 7. Task stops
 
 Dockerfile CMD is only a fallback and normally overridden by ECS.
@@ -223,12 +233,12 @@ Streams:
 Current setup:
 
 -   Public subnets
--   assignPublicIp = ENABLED
--   Security group egress: HTTPS (TCP 443) to `0.0.0.0/0`
+-   `assignPublicIp = ENABLED`
+-   Security group egress:
+    - HTTPS (TCP 443) to `0.0.0.0/0` — for the target API
+    - DNS (UDP 53 + TCP 53) to `0.0.0.0/0` — for hostname resolution
 
-Chosen for cost efficiency (no NAT, no endpoints).
-
-If you see name-resolution errors (e.g., failures resolving hostnames), some environments require explicit SG/NACL egress to the VPC resolver (UDP/TCP 53).
+Chosen for cost efficiency (no NAT, no endpoints). DNS egress is required for k6 to resolve hostnames; without it, tasks fail with cryptic connection errors in environments with custom resolvers or tightened NACLs.
 
 If your organization requires private networking, you can adapt this to private subnets + NAT or VPC endpoints (not the default here).
 
