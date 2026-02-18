@@ -64,6 +64,29 @@ function doRequest() {
   }
 }
 
+// Thresholds are configurable via env vars so that slow or degraded APIs don't
+// suppress the S3 result upload. When k6 breaches a threshold it exits with
+// code 99, and the entrypoint skips the upload — losing the data you most want.
+//
+// Override defaults at runtime via run_task.py flags:
+//   --threshold-error-rate 0.05   (default: 0.01 → 1%)
+//   --threshold-p95-ms 2000       (default: 1000 → 1 s)
+//
+// Set either to "off" to disable that threshold entirely (always upload results).
+const THRESHOLD_ERROR_RATE = __ENV.THRESHOLD_ERROR_RATE || "0.01";
+const THRESHOLD_P95_MS = __ENV.THRESHOLD_P95_MS || "1000";
+
+function buildThresholds() {
+  const t = {};
+  if (THRESHOLD_ERROR_RATE !== "off") {
+    t["http_req_failed{scenario:measure}"] = [`rate<${THRESHOLD_ERROR_RATE}`];
+  }
+  if (THRESHOLD_P95_MS !== "off") {
+    t["http_req_duration{scenario:measure}"] = [`p(95)<${THRESHOLD_P95_MS}`];
+  }
+  return t;
+}
+
 export const options = {
   discardResponseBodies: true,
   scenarios: Object.assign(
@@ -91,24 +114,10 @@ export const options = {
     }
   ),
 
-  /*  IMPORTANT: thresholds apply ONLY to the measurement scenario
-      tune per your API The percentage of failed HTTP requests must stay below 1%
-      tune per your API 95% of requests must complete faster than 1000 ms
-  */
-  thresholds: {
-    "http_req_failed{scenario:measure}": ["rate<0.01"],
-    "http_req_duration{scenario:measure}": ["p(95)<1000"],
-  },
+  // Thresholds: tune via --threshold-error-rate / --threshold-p95-ms flags,
+  // or set to "off" to disable. See comment above buildThresholds().
+  thresholds: buildThresholds(),
 };
-
-/*export const options = {
-  stages: [
-    { duration: "30s", target: Number(__ENV.MEASURE_VUS || 50) },//Gradually ramp from 0 → 50 VUs over 30 seconds
-    { duration: "1m", target: Number(__ENV.MEASURE_VUS || 50) },//Hold steady at 50 VUs for 1 minute
-    { duration: "30s", target: 0 },// Ramp down from 50 → 0 VUs over 30 seconds
-  ],
-  thresholds: { http_req_failed: ["rate<0.02"] },
-};*/
 
 export function warmupExec() {
   doRequest();

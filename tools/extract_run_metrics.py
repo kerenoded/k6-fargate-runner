@@ -23,14 +23,12 @@ def main():
 
     # Support BOTH formats for backward compatibility
     if "k6" in raw:
-        meta = raw
         data = raw["k6"]
         run_id = raw.get("run_id") or p.stem
         scenario_type = raw.get("scenario") or p.stem
         url = raw.get("target_url")
         method_type = raw.get("method_type")
     else:
-        meta = {}
         data = raw
         run_id = p.stem
         scenario_type = p.stem

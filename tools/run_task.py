@@ -170,6 +170,22 @@ def main():
         action="store_true",
         help="After a successful run (only when waiting), run tools/fetch_and_append.py <RUN_ID>.",
     )
+    ap.add_argument(
+        "--threshold-error-rate",
+        default=None,
+        help=(
+            "k6 error-rate threshold for the measure scenario (e.g. '0.05' for 5%%). "
+            "Pass 'off' to disable. Default: 0.01 (1%%)."
+        ),
+    )
+    ap.add_argument(
+        "--threshold-p95-ms",
+        default=None,
+        help=(
+            "k6 p95 latency threshold in milliseconds (e.g. '2000'). "
+            "Pass 'off' to disable. Default: 1000 ms."
+        ),
+    )
     args = ap.parse_args()
 
     if args.no_wait and args.fetch_and_append:
@@ -270,6 +286,13 @@ def main():
     if request_file_in_container:
         env.append({"name": "REQUEST_FILE_PATH", "value": request_file_in_container})
     env.append({"name": "REQUEST_JSON", "value": json.dumps(request)})
+
+    # Pass configurable thresholds to k6 (load.js reads these env vars).
+    # If not provided, k6 uses its own defaults (1% error rate, p95 < 1000ms).
+    if args.threshold_error_rate is not None:
+        env.append({"name": "THRESHOLD_ERROR_RATE", "value": args.threshold_error_rate})
+    if args.threshold_p95_ms is not None:
+        env.append({"name": "THRESHOLD_P95_MS", "value": args.threshold_p95_ms})
 
     warmup_seconds = 0
     if args.scenario == "load" and args.warmup_vus is not None:
