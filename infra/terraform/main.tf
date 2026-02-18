@@ -26,6 +26,9 @@ provider "aws" {
 
 data "aws_availability_zones" "available" {}
 
+# Used to scope IAM trust policies to this account (confused deputy protection).
+data "aws_caller_identity" "current" {}
+
 locals {
   name           = var.project
   container_name = "k6"

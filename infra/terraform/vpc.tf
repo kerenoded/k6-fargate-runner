@@ -17,11 +17,16 @@ resource "aws_internet_gateway" "this" {
 }
 
 resource "aws_subnet" "public" {
-  count                   = length(var.public_subnet_cidrs)
-  vpc_id                  = aws_vpc.this.id
-  cidr_block              = var.public_subnet_cidrs[count.index]
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
-  map_public_ip_on_launch = true
+  count             = length(var.public_subnet_cidrs)
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = var.public_subnet_cidrs[count.index]
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+
+  # Explicitly false: the Fargate task requests a public IP via assignPublicIp=ENABLED
+  # in run_task.py, so this subnet-level default is not needed. Leaving it true
+  # would auto-assign public IPs to any other resource launched in these subnets
+  # (EC2, RDS, etc.) — a footgun for anyone extending this VPC.
+  map_public_ip_on_launch = false
 
   tags = merge(local.common_tags, {
     Name = "${local.name}-public-${count.index}"
