@@ -251,6 +251,9 @@ def main():
         {"name": "SLEEP_MS", "value": str(args.sleep_ms)},
         {"name": "RESULTS_BUCKET", "value": results_bucket},
         {"name": "RESULTS_KEY", "value": results_key},
+        # upload_summary.py needs an explicit region to avoid boto3 defaulting to
+        # us-east-1 and getting a PermanentRedirect for buckets in other regions.
+        {"name": "AWS_DEFAULT_REGION", "value": REGION},
     ]
 
     if os.environ.get("TARGET_API_KEY"):
