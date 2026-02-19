@@ -6,8 +6,11 @@ locals {
 resource "aws_s3_bucket" "results" {
   bucket = local.results_bucket_name
 
-  # Safer default: prevents accidental delete with objects
-  force_destroy = false
+  # Set to true so `terraform destroy` can remove the bucket even when it
+  # contains result objects. Without this, destroy fails with BucketNotEmpty.
+  # The lifecycle rule below already expires objects after 30 days, so data
+  # loss risk is low — but be aware this makes accidental destruction easier.
+  force_destroy = true
 
   tags = merge(local.common_tags, {
     Name = local.results_bucket_name
@@ -38,6 +41,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "results" {
   rule {
     id     = "expire-old"
     status = "Enabled"
+
+    # An explicit filter block is required by the AWS provider (will be a hard
+    # error in a future version). Empty filter = apply to all objects.
+    filter {}
 
     expiration {
       days = 30

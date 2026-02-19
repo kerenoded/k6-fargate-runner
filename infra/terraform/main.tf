@@ -4,10 +4,11 @@ terraform {
   required_providers {
     aws = {
       source = "hashicorp/aws"
-      # ~> 5.0 allows patch/minor upgrades within 5.x but blocks major version
-      # bumps (6.0+) that may contain breaking changes to resource schemas.
-      # Use >= only if you intentionally want to track future major versions.
-      version = "~> 5.0"
+      # ~> 6.0 allows patch/minor upgrades within 6.x. Bumped from ~> 5.0
+      # because the remote state was written by a v6.x provider; keeping the
+      # constraint at ~> 5.0 causes "Resource instance managed by newer
+      # provider version" errors on plan/destroy.
+      version = "~> 6.0"
     }
   }
 }
