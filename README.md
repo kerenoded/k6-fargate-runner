@@ -49,6 +49,8 @@ This repo provisions a small, consistent load generator in AWS:
 
 ## Architecture (what runs where)
 
+![Architecture overview](docs/images/k6-fargate-runner-architecture.gif)
+
 ### On your laptop
 
 - `infra/terraform/` provisions AWS resources (Terraform)
