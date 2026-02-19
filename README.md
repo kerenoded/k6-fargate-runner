@@ -29,7 +29,7 @@ This is:
 
 This is not:
 - A full load-testing platform (no UI, no scheduler, no long-running control plane).
-- A production “performance testing service”.
+- A production "performance testing service".
 
 ## Why this exists (vs running k6 locally)
 
@@ -115,7 +115,7 @@ terraform apply
 ### 3) Build & push image
 
 ```bash
-python3 tools/build_push.py
+python tools/build_push.py
 ```
 
 By default this pushes a stable tag (defaults to `IMAGE_TAG=stable`) and also pushes an immutable build tag like `build-YYYYMMDDHHMMSS`.
@@ -136,12 +136,11 @@ Then edit `loadtest/utils/request.local.json` to point at your target.
 2) Start a run:
 
 ```bash
-python3 tools/run_task.py \
+python tools/run_task.py \
   --vus 50 \
   --duration 1m \
   --warmup-vus 10 \
   --warmup-duration 15s \
-  --sleep-ms 10 \
   --request-file loadtest/utils/request.local.json \
   --tail
 ```
@@ -150,16 +149,16 @@ python3 tools/run_task.py \
 
 ```bash
 # Relax thresholds for a slow or degraded API
-python3 tools/run_task.py ... --threshold-error-rate 0.05 --threshold-p95-ms 2000
+python tools/run_task.py ... --threshold-error-rate 0.05 --threshold-p95-ms 2000
 
 # Disable thresholds entirely — always upload results regardless of performance
-python3 tools/run_task.py ... --threshold-error-rate off --threshold-p95-ms off
+python tools/run_task.py ... --threshold-error-rate off --threshold-p95-ms off
 ```
 
 If you add `--fetch-and-append`, the tool will automatically download the result and append it to the local run history when the task finishes (so you can skip step 3):
 
 ```bash
-python3 tools/run_task.py \
+python tools/run_task.py \
   --vus 50 \
   --duration 1m \
   --warmup-vus 10 \
@@ -179,14 +178,37 @@ If you ran with `--fetch-and-append`, skip this step.
 `tools/fetch_and_append.py` is the "one command" path: it downloads the run (`tools/fetch_run.py`) and then extracts metrics (`tools/extract_run_metrics.py`) and appends them to `test-results/runs.jsonl`.
 
 ```bash
-python3 tools/fetch_and_append.py <RUN_ID>
-python3 tools/fetch_run.py <RUN_ID>
-python3 tools/extract_run_metrics.py test-results/<RUN_ID>/summary.json
+python tools/fetch_and_append.py <RUN_ID>
+python tools/fetch_run.py <RUN_ID>
+python tools/extract_run_metrics.py test-results/<RUN_ID>/summary.json
 ```
 
-4) See Graphs:
+4) See Graphs of history runs:
 ```bash
-python3 tools/plot_runs.py
+python tools/plot_runs.py
+```
+
+Plots 5 panels (avg latency, p90, p95, throughput, error rate) from `test-results/runs.jsonl`. Useful flags:
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--runs <path>` | `test-results/runs.jsonl` | Path to the JSONL ledger |
+| `--url <url>` | _(all)_ | Filter to a specific target URL (exact match) |
+| `--metrics avg,rps,p90,p95,err` | all | Show only a subset of panels |
+| `--group-by none\|url\|scenario` | `none` | Split series by URL or scenario |
+| `--save <file.png>` | _(none)_ | Save chart to an image file |
+| `--show` | _(auto)_ | Force the interactive window even when `--save` is set |
+
+Examples:
+```bash
+# Save chart to a file
+python tools/plot_runs.py --save report.png
+
+# Show only latency panels, grouped by URL
+python tools/plot_runs.py --metrics avg,p90,p95 --group-by url
+
+# Filter to one endpoint and save
+python tools/plot_runs.py --url https://api.example.com/endpoint --save endpoint.png
 ```
 
 ## CI
@@ -251,7 +273,7 @@ Terraform config uses `var.image_tag` (default `stable`) for the ECS task defini
 To run an immutable build tag without re-applying Terraform, `tools/run_task.py` supports:
 
 ```bash
-python3 tools/run_task.py --image-tag build-YYYYMMDDHHMMSS --tail
+python tools/run_task.py --image-tag build-YYYYMMDDHHMMSS --tail
 ```
 
 This registers a one-off task definition revision for the run.
@@ -289,7 +311,7 @@ cd infra/terraform
 terraform destroy
 ```
 
-If you want to purge images immediately, delete them from ECR (the repo also has a lifecycle policy, but it’s not instant).
+If you want to purge images immediately, delete them from ECR (the repo also has a lifecycle policy, but it's not instant).
 
 ## Publishing checklist
 
