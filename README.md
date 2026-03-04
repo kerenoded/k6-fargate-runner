@@ -9,6 +9,7 @@ Run repeatable k6 API load tests from AWS Fargate (not your laptop). Each run is
 - [What this is (and is not)](#what-this-is-and-is-not)
 - [Why this exists (vs running k6 locally)](#why-this-exists-vs-running-k6-locally)
 - [Architecture (what runs where)](#architecture-what-runs-where)
+- [Operating Model](#operating-model)
 - [Quick Start](#quick-start)
 - [CI](#ci)
 - [Execution Flow](#execution-flow)
@@ -66,6 +67,49 @@ This repo provisions a small, consistent load generator in AWS:
 
 ![Example run (k6 from Fargate)](docs/images/example-k6-fargate-run.png)
 
+### Why run k6 on Fargate
+
+Running load tests from laptops or shared CI agents often introduces
+noise: limited CPU, background processes, VPN routing, and network
+throttling.
+
+Using Fargate provides an isolated and reproducible execution
+environment with predictable CPU, memory, and networking,
+making results easier to compare across runs.
+
+## Operating Model
+
+### What “scaling” means here
+One ECS Fargate task = one k6 load generator.
+
+If you need more load than a single task can produce, scale by **sharding across multiple tasks** (multiple independent runs), not by endlessly increasing VUs inside one task. This keeps runs simpler, more reproducible, and avoids a single generator becoming the bottleneck.
+
+### When the generator becomes the bottleneck
+If throughput plateaus or latency inflates, it’s often the load generator, not the target system. Common causes:
+- CPU limits (TLS, request generation, JS execution)
+- Network throughput limits
+- Connection churn / poor keep-alive behavior
+
+Rule of thumb:
+1) Increase task size (vCPU/memory) to remove local bottlenecks  
+2) If you still can’t reach target rate, shard across tasks
+
+### Rate vs concurrency (common source of confusion)
+k6 has two separate “levers”:
+- **Arrival rate / pacing** (how many iterations/requests per second you *try* to generate)
+- **Concurrency (VUs)** (how many parallel workers can execute requests at the same time)
+
+If the target system responds quickly but the achieved request rate is below the configured arrival rate, increase VUs or task size.
+If the target is slow, raising VUs can increase in-flight requests and amplify tail latency — shard across multiple tasks instead of pushing a single generator to unrealistic VU levels.
+
+### Reproducibility expectations
+This repo is built for repeatable experiments:
+- consistent AWS execution environment
+- pinned container image tags for “baseline vs change”
+- results stored per `RUN_ID` in S3
+
+For comparisons, keep the image tag stable as your baseline and change **one variable at a time** (target version, task size, VUs, script/thresholds).
+
 ## Quick Start
 
 ### Prerequisites
@@ -77,7 +121,7 @@ This repo provisions a small, consistent load generator in AWS:
 - Python 3.11+ (venv recommended)
 
 Notes:
--   Default region is `eu-west-1` (Terraform `var.region`, tools read `AWS_REGION`).
+-   Default region is `eu-west-1` (Terraform `var.region`, tools default to `eu-west-1` unless `AWS_REGION/AWS_DEFAULT_REGION` is set).
 -   This repo intentionally defaults to public subnets + public IP for cost/simplicity.
 
 ### 1) Create virtual environment
@@ -260,7 +304,7 @@ Current setup:
 -   `assignPublicIp = ENABLED`
 -   Security group egress:
     - HTTPS (TCP 443) to `0.0.0.0/0` — for the target API
-    - DNS (UDP 53 + TCP 53) to `0.0.0.0/0` — for hostname resolution
+    - DNS (UDP 53 + TCP 53) to `0.0.0.0/0` — for hostname resolution (typically to the VPC resolver; `0.0.0.0/0` is used here for simplicity)
 
 Chosen for cost efficiency (no NAT, no endpoints). DNS egress is required for k6 to resolve hostnames; without it, tasks fail with cryptic connection errors in environments with custom resolvers or tightened NACLs.
 
